@@ -19,10 +19,11 @@ export default function Session() {
   });
 
   useNavbarOffset();
-  
+
+  const stopSafe = () => { stop(); }; // garantit void
   useEffect(() => {
     if (running) start(); else stop();
-    return () => stop();
+    return stopSafe;
   }, [running]);
 
   return (
