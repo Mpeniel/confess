@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+    --nav-h: 64px; /* fallback si le JS n’a pas encore tourné */
+}
+
+.safe-top {
+    padding-top: calc(var(--nav-h) + env(safe-area-inset-top));
+}
+.mt-safe {
+    margin-top: calc(var(--nav-h) + env(safe-area-inset-top));
+}
