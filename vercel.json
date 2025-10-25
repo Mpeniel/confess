@@ -6,5 +6,11 @@
           { "key": "Permissions-Policy", "value": "microphone=(self), speech-recognition=(self)" }
         ]
       }
+    ],
+    "rewrites": [
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
     ]
   }  

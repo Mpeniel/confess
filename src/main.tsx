@@ -7,6 +7,7 @@ import Layout from "./layouts/Layout.tsx";
 import "./index.css";
 import Session from "./pages/Session.tsx";
 import CampaignsOverview from "./pages/CampaignsOverview.tsx";
+import TestSpeech from "./pages/TestSpeech.tsx";
 
 const router = createBrowserRouter([
   {
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
       { index: true, element: <Dashboard /> },
       { path: "session/:id", element: <Session /> },
       { path: "campaigns", element: <CampaignsOverview /> },
+      {path: 'test', element: <TestSpeech />},
     ],
   },
   { path: "/login", element: <Login /> },
