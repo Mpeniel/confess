@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useNavbarOffset } from "../hooks";
 import mic from "../assets/icons/mic.svg";
@@ -59,6 +59,11 @@ export default function Session() {
     setRunning(false);
   }
 
+  const stopSafe = () => { stop(); }; // garantit void
+  useEffect(() => {
+    return stopSafe;
+  }, [running]);
+
   useNavbarOffset();
 
   return (
@@ -91,6 +96,7 @@ export default function Session() {
               className={`h-8 w-8 transition-opacity ${listening ? "opacity-100" : "opacity-40"}`}
             />
           </div>
+          {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
         </div>
       </div>
 
