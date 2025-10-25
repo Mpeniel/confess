@@ -22,7 +22,7 @@ export function useBufferedConfession(
     anchors = ["je", "suis", "mort", "ressuscit", "christ"], // stems utiles
   } = opts;
 
-  const { transcript, listening, resetTranscript } = useSpeechRecognition();
+  const { transcript, listening, browserSupportsSpeechRecognition,resetTranscript } = useSpeechRecognition();
 
   const [count, setCount] = useState(0);
   const bufferRef = useRef<string>("");           // buffer normalisé concaténé
@@ -100,6 +100,7 @@ export function useBufferedConfession(
   return {
     count,
     listening,
+    browserSupportsSpeechRecognition,
     start,
     stop,
     resetTranscript,

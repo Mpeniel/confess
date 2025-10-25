@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useNavbarOffset } from "../hooks";
 import mic from "../assets/icons/mic.svg";
@@ -7,24 +7,59 @@ import { MOCK } from "../data";
 
 export default function Session() {
   const params = useParams();
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [asked, setAsked] = useState(false); 
   const phrase =  MOCK.find((c) => c.id === params.id)?.phrase;
   const navigate = useNavigate();
 
-  const { count, listening, start, stop } = useBufferedConfession(phrase || "", {
+  const { count, listening, browserSupportsSpeechRecognition ,start, stop } = useBufferedConfession(phrase || "", {
     language: "fr-FR",
     anchors: ["je", "suis", "mort", "ressuscit", "christ"], // clé: "ressuscit" (stem)
     slackWords: 2,           // fenêtre +/- 2 mots
     maxFuzzyRatio: 0.22,     // ≈ 22% d’erreurs caractère
   });
 
-  useNavbarOffset();
+  async function askMicPermission(): Promise<boolean> {
+    try {
+      // Déclenche la vraie permission (doit être appelée depuis un clic)
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      return true;
+    } catch (e) {
+      console.error(e);
+      setError("Permission micro refusée. Autorise le micro dans les réglages du navigateur.");
+      return false;
+    }
+  }
 
-  const stopSafe = () => { stop(); }; // garantit void
-  useEffect(() => {
-    if (running) start(); else stop();
-    return stopSafe;
-  }, [running]);
+  async function handleStart() {
+    setError(null);
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR || browserSupportsSpeechRecognition === false) {
+      setError("Reconnaissance vocale non supportée par ce navigateur. Essaie Chrome Desktop.");
+      console.error(error);
+      return;
+    }
+
+    // Demande explicite de permission au clic (obligatoire en prod)
+    if (!asked) {
+      const ok = await askMicPermission();
+      setAsked(true);
+      if (!ok) return;
+    }
+
+    // Lancer l’écoute
+    start();
+    setRunning(true);
+  }
+
+  function handleStop() {
+    stop();
+    setRunning(false);
+  }
+
+  useNavbarOffset();
 
   return (
     <div
@@ -63,7 +98,7 @@ export default function Session() {
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
-          onClick={() => setRunning(false)}
+          onClick={() => handleStop()}
           disabled={!running}
           className="inline-flex items-center gap-2 rounded-xl bg-white text-gray-700
                      border border-gray-200 px-4 py-2 font-medium shadow-sm
@@ -74,13 +109,13 @@ export default function Session() {
 
         <button
           type="button"
-          onClick={() => setRunning(true)}
+          onClick={() => handleStart()}
           disabled={running}
           className="inline-flex items-center gap-2 rounded-xl bg-white text-gray-700
                      border border-gray-200 px-4 py-2 font-medium shadow-sm
                      hover:bg-gray-50 disabled:opacity-50"
         >
-          ▶ Resume
+          ▶ Start
         </button>
 
         <button
