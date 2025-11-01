@@ -9,7 +9,7 @@ export default function Session() {
   const phrase =  MOCK.find((c) => c.id === params.id)?.phrase;
   const navigate = useNavigate();
 
-  const { count, listening, error, start, stop, transcript } = useSpeechCounter(phrase, { mode: "contains", minWordsRatio: 0.6, minWordsAbsolute: 5 });
+  const { count, listening, error, start, stop } = useSpeechCounter(phrase, { mode: "contains", minWordsRatio: 0.6, minWordsAbsolute: 5 });
 
   useNavbarOffset();
 
@@ -25,7 +25,7 @@ export default function Session() {
       >
         “{phrase}”
       </h1>
-      <p>{transcript}</p>
+      {/* <p>{transcript}</p> */}
 
       {/* Halo ovale + cercle compteur (tout en flex, aucune position absolue) */}
       <div className="w-full max-w-4xl">
