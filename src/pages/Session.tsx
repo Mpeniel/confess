@@ -1,68 +1,15 @@
-import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useNavbarOffset } from "../hooks";
 import mic from "../assets/icons/mic.svg";
-import { useBufferedConfession } from "../hooks/useBufferedConfession";
 import { MOCK } from "../data";
+import { useSpeechCounter } from "../hooks/useSpeechCounter";
 
 export default function Session() {
   const params = useParams();
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [asked, setAsked] = useState(false); 
   const phrase =  MOCK.find((c) => c.id === params.id)?.phrase;
   const navigate = useNavigate();
 
-  const { count, listening, browserSupportsSpeechRecognition ,start, stop } = useBufferedConfession(phrase || "", {
-    language: "fr-FR",
-    anchors: ["je", "suis", "mort", "ressuscit", "christ"], // clé: "ressuscit" (stem)
-    slackWords: 2,           // fenêtre +/- 2 mots
-    maxFuzzyRatio: 0.22,     // ≈ 22% d’erreurs caractère
-  });
-
-  async function askMicPermission(): Promise<boolean> {
-    try {
-      // Déclenche la vraie permission (doit être appelée depuis un clic)
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      return true;
-    } catch (e) {
-      console.error(e);
-      setError("Permission micro refusée. Autorise le micro dans les réglages du navigateur.");
-      return false;
-    }
-  }
-
-  async function handleStart() {
-    setError(null);
-
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR || browserSupportsSpeechRecognition === false) {
-      setError("Reconnaissance vocale non supportée par ce navigateur. Essaie Chrome Desktop.");
-      console.error(error);
-      return;
-    }
-
-    // Demande explicite de permission au clic (obligatoire en prod)
-    if (!asked) {
-      const ok = await askMicPermission();
-      setAsked(true);
-      if (!ok) return;
-    }
-
-    // Lancer l’écoute
-    start();
-    setRunning(true);
-  }
-
-  function handleStop() {
-    stop();
-    setRunning(false);
-  }
-
-  const stopSafe = () => { stop(); }; // garantit void
-  useEffect(() => {
-    return stopSafe;
-  }, [running]);
+  const { count, listening, error, start, stop, transcript } = useSpeechCounter(phrase, { mode: "contains", minWordsRatio: 0.6, minWordsAbsolute: 5 });
 
   useNavbarOffset();
 
@@ -78,7 +25,7 @@ export default function Session() {
       >
         “{phrase}”
       </h1>
-      {/* <p>{debug.transcript}</p> */}
+      <p>{transcript}</p>
 
       {/* Halo ovale + cercle compteur (tout en flex, aucune position absolue) */}
       <div className="w-full max-w-4xl">
@@ -104,8 +51,8 @@ export default function Session() {
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
-          onClick={() => handleStop()}
-          disabled={!running}
+          onClick={() => stop()}
+          disabled={!listening}
           className="inline-flex items-center gap-2 rounded-xl bg-white text-gray-700
                      border border-gray-200 px-4 py-2 font-medium shadow-sm
                      hover:bg-gray-50 disabled:opacity-50"
@@ -115,8 +62,8 @@ export default function Session() {
 
         <button
           type="button"
-          onClick={() => handleStart()}
-          disabled={running}
+          onClick={() => start()}
+          disabled={listening}
           className="inline-flex items-center gap-2 rounded-xl bg-white text-gray-700
                      border border-gray-200 px-4 py-2 font-medium shadow-sm
                      hover:bg-gray-50 disabled:opacity-50"
