@@ -9,7 +9,8 @@ export default function Session() {
   const phrase =  MOCK.find((c) => c.id === params.id)?.phrase;
   const navigate = useNavigate();
 
-  const { count, listening, error, start, stop } = useSpeechCounter(phrase, { mode: "contains", minWordsRatio: 0.6, minWordsAbsolute: 5 });
+  const { count, listening, error, start, stop } = useSpeechCounter(phrase, { mode: "fuzzy", slackWords: 1, maxFuzzyRatio: 0.22, minWordsRatio: 0.6, minWordsAbsolute: 5 });
+  console.log(count);
 
   useNavbarOffset();
 

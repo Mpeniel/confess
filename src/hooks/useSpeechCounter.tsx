@@ -19,6 +19,7 @@ export type SpeechCounterOptions = {
   autoRestartDelayMs?: number;
   minWordsRatio?: number;
   minWordsAbsolute?: number;
+  immediateInclude?: boolean;
 };
 
 export type SpeechCounterResult = {
@@ -102,10 +103,11 @@ export function useSpeechCounter(
     mode = "contains",
     maxFuzzyRatio = 0.24,
     slackWords = 2,
-    silenceMs = 1200,
-    autoRestartDelayMs = 120,
-    minWordsRatio = 0.6,
+    silenceMs = 700,
+    autoRestartDelayMs = 100,
+    minWordsRatio = 0.5,
     minWordsAbsolute,
+    immediateInclude = true,
   }: SpeechCounterOptions = {}
 ): SpeechCounterResult {
   const [transcript, setTranscript] = useState<string>("");
@@ -121,15 +123,25 @@ export function useSpeechCounter(
   const runningRef = useRef<boolean>(false);
   const segmentRef = useRef<string>("");
   const silenceTimerRef = useRef<number | null>(null);
+  const lastSegmentHashRef = useRef<string>(""); // <- guard anti-double
+  const lastCountAtSegmentRef = useRef<number>(0);
 
   const finalizeSegment = useCallback(() => {
     const seg = segmentRef.current.trim();
     if (!seg) return;
 
+    const segNorm = normalize(seg);
+    const segHash = `${segNorm}#${count}`; // combine segment & count as hash
+    if (segHash === lastSegmentHashRef.current) {
+      // déjà traité pour ce texte+compte
+      return;
+    }
+    lastSegmentHashRef.current = segHash;
+
     setTranscript(prev => (prev ? `${prev} ${seg}` : seg));
 
     if (normTarget) {
-      const normSeg = normalize(seg);
+      const normSeg = segNorm;
       const segWordsCount = toWords(normSeg).length;
       const targetWordsCount = toWords(normTarget).length;
       const minWordsByRatio = Math.ceil(targetWordsCount * minWordsRatio);
@@ -139,7 +151,9 @@ export function useSpeechCounter(
 
       let inc = 0;
 
-      if (segWordsCount >= minWords) {
+      if (immediateInclude && normSeg.includes(normTarget)) {
+        inc = 1;
+      } else if (segWordsCount >= minWords) {
         if (mode === "exact") {
           if (segWordsCount === targetWordsCount && normSeg === normTarget) inc = 1;
         } else if (mode === "contains") {
@@ -149,11 +163,23 @@ export function useSpeechCounter(
         }
       }
 
-      if (inc > 0) setCount(prev => prev + inc);
+      if (inc > 0) {
+        setCount(prev => prev + inc);
+        lastCountAtSegmentRef.current = count + inc;
+      }
     }
 
     segmentRef.current = "";
-  }, [mode, normTarget, slackWords, maxFuzzyRatio, minWordsRatio, minWordsAbsolute]);
+  }, [
+    mode,
+    normTarget,
+    slackWords,
+    maxFuzzyRatio,
+    minWordsRatio,
+    minWordsAbsolute,
+    immediateInclude,
+    count,
+  ]);
 
   const clearSilenceTimer = () => {
     if (silenceTimerRef.current !== null) {
@@ -251,6 +277,8 @@ export function useSpeechCounter(
     runningRef.current = true;
     segmentRef.current = "";
     clearSilenceTimer();
+    lastSegmentHashRef.current = "";
+    lastCountAtSegmentRef.current = count;
 
     recRef.current = makeRecognizer();
     try {
@@ -259,13 +287,13 @@ export function useSpeechCounter(
       setError(`Impossible de démarrer l’écoute: ${String(e)}`);
       setListening(false);
     }
-  }, [SR, makeRecognizer]);
+  }, [SR, makeRecognizer, count]);
 
   const stop = useCallback(() => {
     runningRef.current = false;
     clearSilenceTimer();
     try { recRef.current?.stop(); } catch {
-      // ignore
+      //
     }
     setListening(false);
   }, []);
@@ -275,7 +303,7 @@ export function useSpeechCounter(
       runningRef.current = false;
       clearSilenceTimer();
       try { recRef.current?.stop(); } catch {
-        // ignore
+        //
       }
     };
   }, []);
